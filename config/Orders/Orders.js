@@ -13,7 +13,7 @@ const stripe = require('stripe')(process.env.STRIPE_API_SECRET);
 
 
 const PaymentController = async (req, res) => {
-   const { cart, user } = req.body;
+   const { cart, user,totalrevenue } = req.body;
 
     // Validate user data
     if (!user.name || !user.email || !user.phone || !user.address) {
@@ -69,6 +69,7 @@ const PaymentController = async (req, res) => {
             products: cart,
             payment: paymentIntent.status === 'succeeded' ? 'success' : 'false',
             buyer: existingUser._id,
+            total:totalrevenue,
         });
         await order.save();
 
@@ -103,6 +104,24 @@ const saveOrderController = async (req, res) => {
         res.status(500).json({ error: "Failed to save order payment information" });
     }
 };
+const getTotalRevenue=async(req,res)=>{
+  try{
+    const orders = await Order.find()
+  const totalRevenue = orders.reduce((acc, order) => acc + order.total, 0);
+  res.status(200).send({
+    success: true,
+    totalRevenue,
+  });
+} catch (error) {
+  console.log(error);
+  res.status(400).send({
+    message: "Error in Total Revenue",
+    error,
+    success: false,
+  });
+}
+
+}
 const getOrderController = async (req, res) => {
     try {
         const { Id } = req.body;
@@ -119,6 +138,22 @@ const getOrderController = async (req, res) => {
       });
     }
   };
+  const OrderCountController = async (req, res) => {
+    try {
+      const totalOrder = await Order.find({}).estimatedDocumentCount();
+      res.status(200).send({
+        success: true,
+        totalOrder,
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(400).send({
+        message: "Error in Order count",
+        error,
+        success: false,
+      });
+    }
+  }; 
  const getAllOrderController = async (req, res) => {
     try {
       const orders = await Order.find({})
@@ -155,5 +190,38 @@ const getOrderController = async (req, res) => {
           });
         }
       };
-     
-module.exports = { PaymentController,getOrderController,getAllOrderController,orderStatusController,saveOrderController};
+      const getMonthlySalesData = async (req, res) => {
+        try {
+          const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+          const salesData = await Order.aggregate([
+            {
+              $match: {
+                createdAt: { $gte: startOfMonth }
+              }
+            },
+            {
+              $group: {
+                _id: { $dayOfMonth: "$createdAt" },
+                total: { $sum: "$total" },   
+                orderCount: { $sum: 1 }
+              }
+            },
+            {
+              $sort: { _id: 1 }
+            }
+          ]);
+      
+          res.status(200).json({
+            success: true,
+            salesData
+          });
+        } catch (error) {
+          console.error("Error fetching sales data:", error);
+          res.status(500).json({
+            success: false,
+            message: "Error fetching sales data"
+          });
+        }
+      };
+      
+module.exports = { PaymentController,getMonthlySalesData,getOrderController,getAllOrderController,orderStatusController,saveOrderController,OrderCountController,getTotalRevenue};

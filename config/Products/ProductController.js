@@ -1,7 +1,8 @@
 const fs = require('fs');
 const { ProductSchema } = require('./ProductModel');
 const { default: slugify } = require('slugify');
-const { OfferSchema } = require('./OfferModel');
+const { CategorySchema } = require('../Category/CategoryModel');
+
 
 
 const CreateProductController = async (req,res) => {
@@ -149,20 +150,50 @@ try {
   };
   const productFiltersController = async (req, res) => {
     try {
-      const { checked, radio } = req.body;
+      const { checked } = req.body;
       let args = {};
-      if (checked.length > 0) args.category = checked;
-      if (radio.length) args.price = { $gte: radio[0], $lte: radio[1] };
+      if (checked.length > 0) args.category = { $in: checked };
+  
       const products = await ProductSchema.find(args);
+     
+  
       res.status(200).send({
         success: true,
         products,
+        
       });
     } catch (error) {
       console.log(error);
       res.status(400).send({
         success: false,
-        message: "Error WHile Filtering Products",
+        message: "Error while filtering products",
+        error,
+      });
+    }
+  };
+  const categorycounts = async (req, res) => {
+    try {
+    
+      const categories = await CategorySchema.find({}); // Assuming you have a CategorySchema
+  
+      // Get the count of products for each category
+      const categoryCounts = await Promise.all(
+        categories.map(async (category) => {
+          const count = await ProductSchema.countDocuments({ category: category._id });
+          return { ...category._doc, count };
+        })
+      );
+  
+      res.status(200).send({
+        success: true,
+     
+        categoryCounts,
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(400).send({
+        success: false,
+        message: "Error while filtering products",
         error,
       });
     }
@@ -193,7 +224,7 @@ try {
       const page = req.params.page ? req.params.page : 1;
       const products = await ProductSchema
         .find({})
-        .select("-photo")
+     
         .skip((page - 1) * perPage)
         .limit(perPage)
         .sort({ createdAt: -1 });
@@ -235,4 +266,4 @@ try {
   
       
   
-module.exports ={CreateProductController,GetProductsController,SingleProductsController,updateProductController,deleteProductController,productListController,productCountController,productFiltersController,searchProductController}
+module.exports ={CreateProductController,GetProductsController,SingleProductsController,updateProductController,deleteProductController,productListController,productCountController,productFiltersController,searchProductController,categorycounts}

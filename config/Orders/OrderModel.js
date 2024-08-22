@@ -6,11 +6,13 @@ const OrderSchema = new Schema({
         name: { type: String },
         photos: [{ type: String }],
         Discountedprice: { type: String },
+      
         selectedSize: { type: String },
         selectedColor: { type: String },
         quantity: { type: Number }
     }], // Assuming Product is another schema
-    payment: { type: String }, // Store payment ID as a string
+    payment: { type: String },
+    total: { type: Number }, // Store payment ID as a string
     buyer: { type: Schema.Types.ObjectId, ref: 'users' },
     status: {
         type: String,

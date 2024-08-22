@@ -147,74 +147,70 @@ const updateProfileController = async (req, res) => {
       }
     };
 
-const ResetRequest= async (req,res)=>{
+    let tokenStore = {}; // Temporary in-memory store for tokens
 
-
-    const { email } = req.body;
-
-    // Find user by email
-    const user = await UserSchema.findOne({ email });
-    if (!user) {
-        return res.status(404).send({
-            success: false,
-            message: "Email Not Registered"
-            
-        });
-    }
-  
-    var transporter = nodemailer.createTransport({
-        service:'gmail',
-        auth: {
-            user: "earnalways251@gmail.com",
-            pass: "pztj opnx kdzb emsc",
-        },
-        // tls:{
-        //     rejectUnauthorized: false,
-        // },
-        // Logger:false
-      });
-     
-     
- 
-    // Generate a unique token
-    const token = crypto.randomBytes(20).toString('hex');
-   
-
-    // Store the token in memory
-    tokenStore = token
-
-//     // Send email with reset link containing the token
-    const resetLink = `http://localhost:3000/reset-password/${token}`;
+    const ResetRequest = async (req, res) => {
+        const { email } = req.body;
     
-    var mailOptions = {
-        from: 'earnalways251@gmail.com',
-        to: {email},
-        subject: 'Forget Password of ecommerce app',
-        text: `click this link to forget your password ${resetLink}`
-      };
-      
-      transporter.sendMail(mailOptions, function(error, info){
-        if (error) {
-            return res.send({
-                  success: false,
-                  error
-            })
+        try {
+            // Find user by email
+            const user = await UserSchema.findOne({ email });
+            if (!user) {
+                return res.status(404).send({
+                    success: false,
+                    message: "Email not registered"
+                });
+            }
     
-        } else {
-          res.send({
-            success:true,
-            message: 'Email sent successfully',
-            info
-          })
+            // Generate a unique token
+            const token = crypto.randomBytes(20).toString('hex');
+            tokenStore[token] = email;
+    
+            // Create a Nodemailer transporter
+            const transporter = nodemailer.createTransport({
+              service: 'gmail',
+              auth: {
+                  user: "your-email@gmail.com",
+                  pass: "your-email-password",
+              },
+              port: 465,
+              secure: true, // true for 465, false for other ports
+              logger: true, // Enable logging to see detailed debug information
+              debug: true,  // Include SMTP traffic in logs
+          });
+          
+    
+            // Send email with reset link containing the token
+            const resetLink = `http://localhost:3000/reset-password/${token}`;
+            const mailOptions = {
+                from: 'your-email@gmail.com',
+                to: email,
+                subject: 'Password Reset Request',
+                text: `Click this link to reset your password: ${resetLink}`
+            };
+    
+            transporter.sendMail(mailOptions, function(error, info) {
+                if (error) {
+                    return res.status(500).send({
+                        success: false,
+                        message: 'Failed to send email',
+                        error
+                    });
+                } else {
+                    res.send({
+                        success: true,
+                        message: 'Password reset email sent successfully'
+                    });
+                }
+            });
+        } catch (error) {
+            res.status(500).send({
+                success: false,
+                message: 'Server error',
+                error
+            });
         }
-      });
-
-      
-    
-
-    } 
-;
-
+    };
 
 const ResetPassword = (req, res) => {
 const { token } = req.params;
